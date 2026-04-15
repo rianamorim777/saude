@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missão: Saúde - Simulador IoT</title>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-card: #1E1E1E;
+            --orange: #FF8C00;
+            --orange-hover: #E67E00;
+            --text: #FFFFFF;
+            --text-muted: #A0A0A0;
+            --success: #00E676;
+            --danger: #FF5252;
+            --border: #333333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .modal-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .header {
+            background: var(--bg-main);
+            padding: 20px 30px;
+            border-bottom: 2px solid var(--orange);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { margin: 0; color: var(--orange); font-size: 24px; }
+        .header .scenario { color: var(--text-muted); font-size: 14px; }
+        
+        /* Steps Indicator */
+        .steps-bar {
+            display: flex;
+            background: #252525;
+            padding: 15px 30px;
+            gap: 10px;
+        }
+        .step-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--text-muted);
+            background: transparent;
+            border: 1px solid transparent;
+            transition: 0.3s;
+        }
+        .step-tab.active {
+            color: var(--bg-main);
+            background: var(--orange);
+            border-color: var(--orange);
+        }
+        .step-tab.completed {
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        /* Content Area */
+        .content {
+            padding: 30px;
+            min-height: 350px;
+        }
+        .step-content { display: none; }
+        .step-content.active { display: block; animation: fadeIn 0.3s ease; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Form Elements */
+        label { display: block; margin-bottom: 15px; font-size: 14px; }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+        }
+        .security-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .toggle-card {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .toggle-card.active {
+            border-color: var(--success);
+            background: rgba(0, 230, 118, 0.1);
+        }
+        .toggle-card .icon { font-size: 24px; margin-bottom: 5px; }
+        .toggle-card .title { font-weight: bold; font-size: 14px; }
+        .toggle-card .desc { font-size: 11px; color: var(--text-muted); }
+
+        /* Architecture Visual for Step 3 */
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 30px 0;
+        }
+        .node {
+            width: 100px;
+            height: 100px;
+            background: #252525;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            transition: 0.3s;
+        }
+        .node.active { border-color: var(--orange); background: rgba(255, 140, 0, 0.1); box-shadow: 0 0 15px rgba(255, 140, 0, 0.3); }
+        .node.done { border-color: var(--success); }
+        .node-icon { font-size: 24px; margin-bottom: 5px; }
+        .arrow { flex: 1; height: 2px; background: var(--border); position: relative; margin: 0 5px; }
+        .arrow.active { background: var(--orange); }
+
+        /* Step 4 KPIs */
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .kpi-box {
+            background: var(--bg-main);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid var(--border);
+        }
+        .kpi-box.success { border-left-color: var(--success); }
+        .kpi-box.danger { border-left-color: var(--danger); }
+        .kpi-value { font-size: 32px; font-weight: bold; color: var(--orange); }
+        .kpi-label { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+        /* Buttons */
+        .btn-container { display: flex; justify-content: space-between; margin-top: 30px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-next { background: var(--orange); color: var(--bg-main); }
+        .btn-next:hover { background: var(--orange-hover); }
+        .btn-next:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .btn-back { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+        .btn-back:hover { border-color: var(--text-muted); }
+        .btn-simulate { background: var(--success); color: var(--bg-main); width: 100%; padding: 15px; font-size: 16px; }
+        .btn-simulate:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+        .log-terminal {
+            background: #000;
+            color: #0F0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 6px;
+            height: 120px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="modal-container">
+    <div class="header">
+        <h1>Missão: Saúde</h1>
+        <div class="scenario">Cenário: 5TB de exames por dia.</div>
+    </div>
+
+    <div class="steps-bar">
+        <div class="step-tab active" id="tab-1">1. Planejar Ingestão</div>
+        <div class="step-tab" id="tab-2">2. Definir Segurança</div>
+        <div class="step-tab" id="tab-3">3. Simular Fluxo</div>
+        <div class="step-tab" id="tab-4">4. Discutir Latência</div>
+    </div>
+
+    <div class="content">
+        <!-- PASSO 1 -->
+        <div class="step-content active" id="step-1">
+            <h2>Planejamento de Ingestão de Dados</h2>
+            <p style="color: var(--text-muted); font-size: 14px;">Configure os componentes de ingestão para suportar o volume de 5TB/dia.</p>
+            
+            <label>
+                Protocolo de Dispositivos IoT:
+                <select id="protocol">
+                    <option value="MQTT">MQTT (Leve, ideal para wearables/sensores)</option>
+                    <option value="HTTP">HTTP/REST (Compatível com APIs legadas)</option>
+                </select>
+            </label>
+            
+            <label>
+                Broker de Mensageria (Streaming):
+                <select id="broker">
+                    <option value="Kafka">Apache Kafka (Alta escala, 5TB/dia)</option>
+                    <option value="RabbitMQ">RabbitMQ (Menor escala)</option>
+                </select>
+            </label>
+
+            <label>
+                Partitions Kafka (Capacidade de processamento paralelo):
+                <input type="number" id="partitions" value="12" min="1" max="50">
+            </label>
+            <small style="color: var(--text-muted);">* Recomendado: 12+ partitions para garantir throughput de 5TB.</small>
+
+            <div class="btn-container">
+                <div></div>
+                <button class="btn-next" onclick="goToStep(2)">Próximo Passo</button>
+            </div>
+        </div>
+
+        <!-- PASSO 2 -->
+        <div class="step-content" id="step-2">
+            <h2>Definição de Segurança</h2>
+            <p style="color: var(--text-muted); font-size: 14px;">Dados médicos exigem conformidade. Ative todas as camadas de segurança para prosseguir.</p>
+            
+            <div class="security-grid">
+                <div class="toggle-card" onclick="toggleSecurity(this, 'tls')" id="sec-tls">
+                    <div class="icon">🔒</div>
+                    <div class="title">TLS 1.3</div>
+                    <div class="desc">Trânsito de dados criptografado</div>
+                </div>
+                <div class="toggle-card" onclick="toggleSecurity(this, 'aes')" id="sec-aes">
+                    <div class="icon">🔑</div>
+                    <div class="title">AES-256</div>
+                    <div class="desc">Criptografia em repouso (Edge)</div>
+                </div>
+                <div class="toggle-card" onclick="toggleSecurity(this, 'rbac')" id="sec-rbac">
+                    <div class="icon">🛡️</div>
+                    <div class="title">RBAC</div>
+                    <div class="desc">Acesso por perfil (Médico, TI)</div>
+                </div>
+                <div class="toggle-card" onclick="toggleSecurity(this, 'lgpd')" id="sec-lgpd">
+                    <div class="icon">🕵️</div>
+                    <div class="title">Anonimização</div>
+                    <div class="desc">Masking de dados sensíveis (LGPD)</div>
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn-back" onclick="goToStep(1)">Voltar</button>
+                <button class="btn-next" id="btn-step2" disabled onclick="goToStep(3)">Próximo Passo</button>
+            </div>
+        </div>
+
+        <!-- PASSO 3 -->
+        <div class="step-content" id="step-3">
+            <h2>Simulação de Fluxo ao Médico</h2>
+            <p style="color: var(--text-muted); font-size: 14px;">Clique em simular para enviar um exame de Tomógrafo através da arquitetura definida.</p>
+            
+            <div class="arch-flow">
+                <div class="node" id="node-iot"><div class="node-icon">📟</div>IoT Device</div>
+                <div class="arrow" id="arr-1"></div>
+                <div class="node" id="node-edge"><div class="node-icon">🔶</div>Edge/AES</div>
+                <div class="arrow" id="arr-2"></div>
+                <div class="node" id="node-kafka"><div class="node-icon">🔌</div>Kafka</div>
+                <div class="arrow" id="arr-3"></div>
+                <div class="node" id="node-lake"><div class="node-icon">🗄️</div>Data Lake</div>
+                <div class="arrow" id="arr-4"></div>
+                <div class="node" id="node-doc"><div class="node-icon">👨‍⚕️</div>Médico</div>
+            </div>
+
+            <button class="btn-simulate" id="btn-simulate" onclick="runSimulation()">▶️ Iniciar Simulação de Exame (500MB)</button>
+
+            <div class="log-terminal" id="terminal">
+                > Aguardando comando de simulação...
+            </div>
+
+            <div class="btn-container">
+                <button class="btn-back" onclick="goToStep(2)">Voltar</button>
+                <button class="btn-next" id="btn-step3" disabled onclick="goToStep(4)">Ver Resultados de Latência</button>
+            </div>
+        </div>
+
+        <!-- PASSO 4 -->
+        <div class="step-content" id="step-4">
+            <h2>Análise de Latência e KPIs</h2>
+            <p style="color: var(--text-muted); font-size: 14px;">Discutindo os resultados obtidos no fluxo fim-a-fim.</p>
+            
+            <div class="kpi-grid">
+                <div class="kpi-box success" id="kpi-total-box">
+                    <div class="kpi-value" id="kpi-total">--</div>
+                    <div class="kpi-label">Latência Total Fim-a-Fim</div>
+                </div>
+                <div class="kpi-box" id="kpi-meta-box">
+                    <div class="kpi-value" id="kpi-meta">--</div>
+                    <div class="kpi-label">Status da Meta (1.5s)</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-value" id="kpi-edge-val">--</div>
+                    <div class="kpi-label">Tempo no Edge (Compressão)</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-value" id="kpi-kafka-val">--</div>
+                    <div class="kpi-label">Tempo no Kafka (Ingestão)</div>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-main); padding: 15px; border-radius: 6px; margin-top: 20px; border-left: 4px solid var(--orange);">
+                <strong style="color: var(--orange);">Conclusão da Simulação:</strong>
+                <p id="discussao" style="font-size: 14px; margin-top: 10px; line-height: 1.5;">
+                    Preencha os dados primeiro.
+                </p>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn-back" onclick="goToStep(3)">Refazer Fluxo</button>
+                <button class="btn-next" onclick="alert('Missão Saúde concluída com sucesso! Sistema validado.')">Finalizar Missão</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStep = 1;
+    let securityStatus = { tls: false, aes: false, rbac: false, lgpd: false };
+    let simData = {};
+
+    function goToStep(step) {
+        if(step === 2 && currentStep === 1) {
+            if(document.getElementById('partitions').value < 12) {
+                alert("Aumente as partitions do Kafka para no mínimo 12 para suportar 5TB/dia!");
+                return;
+            }
+        }
+        
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`tab-${currentStep}`).classList.remove('active');
+        if(currentStep < step) document.getElementById(`tab-${currentStep}`).classList.add('completed');
+        
+        currentStep = step;
+        document.getElementById(`step-${currentStep}`).classList.add('active');
+        document.getElementById(`tab-${currentStep}`).classList.add('active');
+
+        if(step === 4) populateResults();
+    }
+
+    function toggleSecurity(el, type) {
+        securityStatus[type] = !securityStatus[type];
+        el.classList.toggle('active');
+        
+        const allActive = Object.values(securityStatus).every(v => v);
+        document.getElementById('btn-step2').disabled = !allActive;
+    }
+
+    function logTerminal(msg) {
+        const terminal = document.getElementById('terminal');
+        terminal.innerHTML += `<br>> ${msg}`;
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    function resetNodes() {
+        for(let i=1; i<=5; i++) {
+            const nodeId = i === 1 ? 'node-iot' : i === 2 ? 'node-edge' : i === 3 ? 'node-kafka' : i === 4 ? 'node-lake' : 'node-doc';
+            document.getElementById(nodeId).classList.remove('active', 'done');
+        }
+        for(let i=1; i<=4; i++) document.getElementById(`arr-${i}`).classList.remove('active');
+    }
+
+    async function runSimulation() {
+        const btn = document.getElementById('btn-simulate');
+        btn.disabled = true;
+        btn.innerText = "Transmitindo...";
+        document.getElementById('btn-step3').disabled = true;
+        document.getElementById('terminal').innerHTML = "> Iniciando pipeline de exame...";
+        resetNodes();
+
+        const t1 = Math.floor(Math.random() * 100) + 50;  // IoT
+        const t2 = Math.floor(Math.random() * 200) + 200; // Edge (compressão pesada)
+        const t3 = Math.floor(Math.random() * 150) + 100; // Kafka
+        const t4 = Math.floor(Math.random() * 300) + 400; // Data Lake Write
+
+        simData = { t1, t2, t3, t4, total: t1+t2+t3+t4 };
+
+        // 1. IoT
+        document.getElementById('node-iot').classList.add('active');
+        logTerminal(`[${new Date().toLocaleTimeString()}] Dispositivo gerou imagem de 500MB.`);
+        await sleep(500);
+
+        // 2. Edge
+        document.getElementById('arr-1').classList.add('active');
+        document.getElementById('node-iot').classList.remove('active'); document.getElementById('node-iot').classList.add('done');
+        document.getElementById('node-edge').classList.add('active');
+        logTerminal(`[${new Date().toLocaleTimeString()}] Edge: Comprimindo (JPEG2000) e aplicando AES-256...`);
+        await sleep(600);
+
+        // 3. Kafka
+        document.getElementById('arr-2').classList.add('active');
+        document.getElementById('node-edge').classList.remove('active'); document.getElementById('node-edge').classList.add('done');
+        document.getElementById('node-kafka').classList.add('active');
+        logTerminal(`[${new Date().toLocaleTimeString()}] Kafka: Publicando no tópico 'exames-tc'. Partitions: ${document.getElementById('partitions').value}.`);
+        await sleep(500);
+
+        // 4. Data Lake
+        document.getElementById('arr-3').classList.add('active');
+        document.getElementById('node-kafka').classList.remove('active'); document.getElementById('node-kafka').classList.add('done');
+        document.getElementById('node-lake').classList.add('active');
+        logTerminal(`[${new Date().toLocaleTimeString()}] Data Lake: Gravando no banco de dados estruturado. Metadados anonimizados.`);
+        await sleep(600);
+
+        // 5. Médico
+        document.getElementById('arr-4').classList.add('active');
+        document.getElementById('node-lake').classList.remove('active'); document.getElementById('node-lake').classList.add('done');
+        document.getElementById('node-doc').classList.add('active');
+        logTerminal(`[${new Date().toLocaleTimeString()}] SUCESSO: Exame disponível no dashboard do médico.`);
+
+        btn.innerText = "✅ Simulação Concluída";
+        document.getElementById('btn-step3').disabled = false;
+    }
+
+    function populateResults() {
+        const totalSec = (simData.total / 1000).toFixed(2);
+        const isOk = simData.total <= 1500;
+
+        document.getElementById('kpi-total').innerText = totalSec + "s";
+        document.getElementById('kpi-meta').innerText = isOk ? "DENTRO DA META" : "ACIMA DA META";
+        document.getElementById('kpi-meta-box').className = `kpi-box ${isOk ? 'success' : 'danger'}`;
+        document.getElementById('kpi-edge-val').innerText = (simData.t2 / 1000).toFixed(2) + "s";
+        document.getElementById('kpi-kafka-val').innerText = (simData.t3 / 1000).toFixed(2) + "s";
+
+        const partitions = document.getElementById('partitions').value;
+        let texto = `A transmissão do exame de 500MB levou ${totalSec} segundos. `;
+        texto += `O uso do Edge Computing foi fundamental, adicionando ${simData.t2}ms, mas reduzindo o tamanho do payload para a rede. `;
+        texto += `A ingestão via Kafka com ${partitions} partitions garantiu que o dado não filasse, levando apenas ${simData.t3}ms. `;
+        
+        if(isOk) {
+            texto += `<br><br><strong style="color:var(--success)">A arquitetura atende perfeitamente ao KPI de 1.5s para exames padrão.</strong> Para manter isso com 5TB/dia (cerca de 10.000 exames/dia), o auto-scaling do Kafka será acionado.`;
+        } else {
+            texto += `<br><br><strong style="color:var(--danger)">Atenção: A latência ultrapassou 1.5s.</strong> Possíveis causas reais: Gargalo de I/O no Data Lake ou rede congestionada. Recomenda-se aumentar o cache do Edge ou otimizar as partitions Kafka.`;
+        }
+
+        document.getElementById('discussao').innerHTML = texto;
+    }
+</script>
+
+</body>
+</html>
